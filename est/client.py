@@ -3,16 +3,15 @@
 This is the first object to instantiate to interact with the API.
 """
 
-import base64
-import ssl
 import subprocess
 
 import OpenSSL.crypto
 
 import asn1crypto.core
 
-import est.errors
-import est.request
+from . import errors
+from . import request
+
 
 class Client(object):
     """API client.
@@ -53,9 +52,10 @@ class Client(object):
         Raises:
             est.errors.RequestError
         """
+
         url = self.url_prefix + '/cacerts'
-        content = est.request.get(url,
-            verify=self.implicit_trust_anchor_cert_path)
+        content = request.get(url,
+                              verify=self.implicit_trust_anchor_cert_path)
 
         pem = self.pkcs7_to_pem(content)
 
@@ -76,8 +76,8 @@ class Client(object):
         url = self.url_prefix + '/simpleenroll'
         auth = (self.username, self.password)
         headers = {'Content-Type': 'application/pkcs10'}
-        content = est.request.post(url, csr, auth=auth, headers=headers,
-            verify=self.implicit_trust_anchor_cert_path)
+        content = request.post(url, csr, auth=auth, headers=headers,
+                               verify=self.implicit_trust_anchor_cert_path)
         pem = self.pkcs7_to_pem(content)
 
         return pem
@@ -99,9 +99,9 @@ class Client(object):
         url = self.url_prefix + '/simplereenroll'
         auth = (self.username, self.password)
         headers = {'Content-Type': 'application/pkcs10'}
-        content = est.request.post(url, csr, auth=auth, headers=headers,
-            verify=self.implicit_trust_anchor_cert_path,
-            cert=cert)
+        content = request.post(url, csr, auth=auth, headers=headers,
+                               verify=self.implicit_trust_anchor_cert_path,
+                               cert=cert)
         pem = self.pkcs7_to_pem(content)
 
         return pem
@@ -120,8 +120,8 @@ class Client(object):
             est.errors.RequestError
         """
         url = self.url_prefix + '/csrattrs'
-        content = est.request.get(url,
-            verify=self.implicit_trust_anchor_cert_path)
+        content = request.get(url,
+                              verify=self.implicit_trust_anchor_cert_path)
 
         parsed = asn1crypto.core.Sequence.load(content)
         return parsed.native
@@ -209,7 +209,7 @@ class Client(object):
                 pass
 
         if not inform:
-            raise est.errors.Error('Invalid PKCS7 data type')
+            raise errors.Error('Invalid PKCS7 data type')
 
         stdout, stderr = subprocess.Popen(
             ['openssl', 'pkcs7', '-inform', inform, '-outform', 'PEM',
