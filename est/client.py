@@ -61,11 +61,13 @@ class Client(object):
 
         return pem
 
-    def simpleenroll(self, csr):
+    def simpleenroll(self, csr, cert=False):
         """EST /simpleenroll request.
 
         Args:
             csr (str): Certificate signing request (PEM).
+
+            cert (tuple): Client cert path and private key path.
 
         Returns:
             str.  Signed certificate (PEM).
@@ -77,7 +79,8 @@ class Client(object):
         auth = (self.username, self.password)
         headers = {'Content-Type': 'application/pkcs10'}
         content = request.post(url, csr, auth=auth, headers=headers,
-                               verify=self.implicit_trust_anchor_cert_path)
+                               verify=self.implicit_trust_anchor_cert_path,
+                               cert=cert)
         pem = self.pkcs7_to_pem(content)
 
         return pem
@@ -139,7 +142,8 @@ class Client(object):
 
     def create_csr(self, common_name, country=None, state=None, city=None,
                    organization=None, organizational_unit=None,
-                   email_address=None, subject_alt_name=None):
+                   email_address=None, subject_alt_name=None,
+                   cipher_suite='rsa_2048'):
         """
         Args:
             common_name (str).
@@ -163,7 +167,12 @@ class Client(object):
             signing request (PEM).
         """
         key = OpenSSL.crypto.PKey()
-        key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
+        if cipher_suite == 'ecdsa':
+            print('Using ECDSA cipher suite')
+            key.generate_key(OpenSSL.crypto.TYPE_EC, 2048)
+        else:
+            print('Using RSA 2048 cipher suite')
+            key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
 
         req = OpenSSL.crypto.X509Req()
         req.get_subject().CN = common_name
