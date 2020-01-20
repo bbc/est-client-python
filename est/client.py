@@ -80,7 +80,7 @@ class Client(object):
         headers = {'Content-Type': 'application/pkcs10'}
         content = request.post(url, csr, auth=auth, headers=headers,
                                verify=self.implicit_trust_anchor_cert_path,
-                               cert=cert)
+                               cert=cert, retries=1)
         pem = self.pkcs7_to_pem(content)
 
         return pem
@@ -189,7 +189,7 @@ class Client(object):
         if email_address:
             req.get_subject().emailAddress = email_address
         if subject_alt_name:
-            altName = OpenSSL.crypto.X509Extension('subjectAltName', False, subject_alt_name)
+            altName = OpenSSL.crypto.X509Extension(b'subjectAltName', False, subject_alt_name)
             req.add_extensions([altName])
 
         req.set_pubkey(key)
