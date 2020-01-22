@@ -6,6 +6,10 @@ This is the first object to instantiate to interact with the API.
 import subprocess
 
 import OpenSSL.crypto
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
+
 
 import asn1crypto.core
 
@@ -168,8 +172,11 @@ class Client(object):
         """
         key = OpenSSL.crypto.PKey()
         if cipher_suite == 'ecdsa':
+            # ECDSA is not supported by pyOpenSSL, must use lower level crytop APIs and import key
             print('Using ECDSA cipher suite')
-            key.generate_key(OpenSSL.crypto.TYPE_EC, 2048)
+            key_temp = ec.generate_private_key(ec.SECP256R1(), default_backend())
+            key_pem = key_temp.private_bytes(encoding=Encoding.PEM, format=PrivateFormat.TraditionalOpenSSL, encryption_algorithm=NoEncryption())
+            key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key_pem)
         else:
             print('Using RSA 2048 cipher suite')
             key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
