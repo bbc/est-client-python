@@ -15,7 +15,7 @@ def read(fname):
 
 setup(
     name = "est",
-    version = "0.2.1",
+    version = "0.2.2",
     author = "Laurent Luce",
     author_email = "laurentluce49@yahoo.com",
     description = ('Client to interact with an EST server - RFC 7030.'),
