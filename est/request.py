@@ -36,7 +36,7 @@ def get(url, params=None, headers=None, retries=3, timeout=10, verify=False,
 
 
 def post(url, data, headers=None, auth=None, retries=3, timeout=10,
-         verify=False, cert=False):
+         verify=False, cert=False, responseObj=False):
     """POST to server.
 
     Args:
@@ -46,6 +46,8 @@ def post(url, data, headers=None, auth=None, retries=3, timeout=10,
 
         auth (tuple): Authentication username and password.
 
+        responseObj (bool): If the response object should be returned
+
     Kwargs:
         headers (dict): Request headers.
 
@@ -53,11 +55,12 @@ def post(url, data, headers=None, auth=None, retries=3, timeout=10,
         str: Server response.
     """
     return send(requests.post, url, data=data, headers=headers, auth=auth,
-                retries=retries, timeout=timeout, verify=verify, cert=cert)
+                retries=retries, timeout=timeout, verify=verify, cert=cert,
+                responseObj=responseObj)
 
 
 def send(method, url, params=None, data=None, headers=None, auth=None,
-         retries=3, timeout=10, verify=False, cert=False):
+         retries=3, timeout=10, verify=False, cert=False, responseObj=False):
     """Send request to server.
 
     Args:
@@ -73,6 +76,8 @@ def send(method, url, params=None, data=None, headers=None, auth=None,
         data (str): Request body data.
 
         headers (dict): Request headers.
+
+        responseObj (bool): If the response object should be returned
 
     Returns:
         str: Server response.
@@ -101,6 +106,8 @@ def send(method, url, params=None, data=None, headers=None, auth=None,
                          timeout=timeout, verify=verify, auth=auth, cert=cert)
             message = res.text
             if res.status_code == 200:
+                if responseObj:
+                    return res
                 try:
                     if (res.headers['Content-Transfer-Encoding'] == 'base64'
                         and not res.content.startswith(b'-----BEGIN')):

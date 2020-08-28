@@ -4,12 +4,13 @@ This is the first object to instantiate to interact with the API.
 """
 
 import subprocess
+import base64
 
 import OpenSSL.crypto
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, NoEncryption
-
+from requests_toolbelt.multipart import decoder
 
 import asn1crypto.core
 
@@ -133,6 +134,39 @@ class Client(object):
         parsed = asn1crypto.core.Sequence.load(content)
         return parsed.native
 
+    def serverkeygen(self, csr, cert=False):
+        """EST /serverkeygen request.
+
+        Args:
+            csr (str): Certificate signing request (PEM).
+
+            cert (tuple): Client cert path and private key path.
+
+        Returns:
+            str.  Signed certificate (PEM).
+
+        Raises:
+            est.errors.RequestError
+        """
+        url = self.url_prefix + '/serverkeygen'
+        auth = (self.username, self.password)
+        headers = {'Content-Type': 'application/pkcs10'}
+        response = request.post(url, csr, auth=auth, headers=headers,
+                               verify=self.implicit_trust_anchor_cert_path,
+                               cert=cert, responseObj=True)
+
+        multipart_data = decoder.MultipartDecoder.from_response(response)
+
+        cert = None
+        private_key = None
+        for part in multipart_data.parts:
+            if part.headers.get(b'Content-Type') == b'application/pkcs7-mime; smime-type=certs-only':
+                cert = part.content  # Alternatively, part.text if you want unicode
+            else:
+                private_key = part.content  # Alternatively, part.text if you want unicode
+
+        return cert, private_key
+
     def set_basic_auth(self, username, password):
         """Set up HTTP Basic authentication.
 
@@ -147,7 +181,7 @@ class Client(object):
     def create_csr(self, common_name, country=None, state=None, city=None,
                    organization=None, organizational_unit=None,
                    email_address=None, subject_alt_name=None,
-                   cipher_suite='rsa_2048'):
+                   cipher_suite='rsa_2048', private_key=None):
         """
         Args:
             common_name (str).
@@ -170,16 +204,20 @@ class Client(object):
             (str, str).  Tuple containing private key and certificate
             signing request (PEM).
         """
-        key = OpenSSL.crypto.PKey()
-        if cipher_suite == 'ecdsa':
-            # ECDSA is not supported by pyOpenSSL, must use lower level crytop APIs and import key
-            print('Using ECDSA cipher suite')
-            key_temp = ec.generate_private_key(ec.SECP256R1(), default_backend())
-            key_pem = key_temp.private_bytes(encoding=Encoding.PEM, format=PrivateFormat.TraditionalOpenSSL, encryption_algorithm=NoEncryption())
-            key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key_pem)
+        if private_key:
+            key = OpenSSL.crypto.load_privatekey(
+                OpenSSL.crypto.FILETYPE_PEM, private_key)
         else:
-            print('Using RSA 2048 cipher suite')
-            key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
+            key = OpenSSL.crypto.PKey()
+            if cipher_suite == 'ecdsa':
+                # ECDSA is not supported by pyOpenSSL, must use lower level crytop APIs and import key
+                print('Using ECDSA cipher suite')
+                key_temp = ec.generate_private_key(ec.SECP256R1(), default_backend())
+                key_pem = key_temp.private_bytes(encoding=Encoding.PEM, format=PrivateFormat.TraditionalOpenSSL, encryption_algorithm=NoEncryption())
+                key = OpenSSL.crypto.load_privatekey(OpenSSL.crypto.FILETYPE_PEM, key_pem)
+            else:
+                print('Using RSA 2048 cipher suite')
+                key.generate_key(OpenSSL.crypto.TYPE_RSA, 2048)
 
         req = OpenSSL.crypto.X509Req()
         req.get_subject().CN = common_name
