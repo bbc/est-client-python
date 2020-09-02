@@ -157,15 +157,16 @@ class Client(object):
 
         multipart_data = decoder.MultipartDecoder.from_response(response)
 
-        cert = None
+        pem = None
         private_key = None
         for part in multipart_data.parts:
             if part.headers.get(b'Content-Type') == b'application/pkcs7-mime; smime-type=certs-only':
-                cert = part.content  # Alternatively, part.text if you want unicode
+                cert = base64.b64decode(part.content)  # Alternatively, part.text if you want unicode
+                pem = self.pkcs7_to_pem(cert)
             else:
                 private_key = part.content  # Alternatively, part.text if you want unicode
 
-        return cert, private_key
+        return pem, private_key
 
     def set_basic_auth(self, username, password):
         """Set up HTTP Basic authentication.
